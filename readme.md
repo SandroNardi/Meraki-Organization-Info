@@ -21,9 +21,9 @@ To run this application, ensure that you have the following:
 
 1. Clone the repository:
 
-   ```bash
-   git clone https://github.com/your-username/meraki-dashboard-monitoring.git
-   ```
+```bash
+git clone https://github.com/your-username/meraki-dashboard-monitoring.git
+```
 
 2. Navigate to the project directory:
 
