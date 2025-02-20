@@ -9,8 +9,8 @@ import meraki
 from collections import Counter, defaultdict
 
 # Retrieve API key from environment variable
-API_KEY = os.getenv("MK_TEST_API")
-organization_id = os.getenv("MK_ORG_ID")
+API_KEY = os.getenv("MK_CSM_KEY")
+organization_id = os.getenv("MK_CSM_ORG")
 dashboard = meraki.DashboardAPI(API_KEY, suppress_logging=True)
 
 
@@ -90,69 +90,126 @@ def fetch_mx_sec_status(dashboard, organization_id):
                 continue
 
             network_id = net["id"]
-            mx_uplinks = next(
-                (x for x in org_uplinks if x["networkId"] == network_id), "none"
-            )
+            network_name = net["name"]  # Retrieve network name
 
-            if mx_uplinks == "none" or mx_uplinks.get("model") == "CPSC-HUB":
+            # Use a list comprehension to get all uplinks for the network_id
+            mx_uplinks_list = [x for x in org_uplinks if x["networkId"] == network_id]
+
+            # If no uplinks found or if all models are CPSC-HUB, skip
+            if not mx_uplinks_list or all(
+                uplink.get("model") == "CPSC-HUB" for uplink in mx_uplinks_list
+            ):
                 continue
 
-            # Retrieve firewall rules count
-            fw_rules = dashboard.appliance.getNetworkApplianceFirewallL3FirewallRules(
-                network_id
-            )
-            fw_rules_count = len(fw_rules["rules"])
+            # Process each uplink
+            for mx_uplinks in mx_uplinks_list:
+                # Compile data for each uplink in the network
+                row = {
+                    "general": {
+                        "networkId": mx_uplinks["networkId"],
+                        "name": network_name,  # Include network name
+                        "serial": mx_uplinks["serial"],
+                        "model": mx_uplinks["model"],
+                        "lastReportedAt": mx_uplinks["lastReportedAt"],
+                        "firewallRulesCount": "-",
+                    },
+                    "highAvailability": mx_uplinks["highAvailability"],
+                    "uplinks": {},
+                    "security": {
+                        "IDS": "unavailable",
+                        "AMP": "unavailable",
+                    },
+                    "URL Filtering": {
+                        "Allowed URLs": "-",
+                        "Blocked URLs": "-",
+                        "Blocked Categories": "-",
+                    },
+                }
 
-            # Retrieve IDS and AMP data
-            ids = dashboard.appliance.getNetworkApplianceSecurityIntrusion(network_id)
-            amp = dashboard.appliance.getNetworkApplianceSecurityMalware(network_id)
+                # Add uplinks information
+                for uplink in mx_uplinks.get("uplinks", []):
+                    interface = uplink["interface"]
+                    status = uplink["status"]
 
-            # Retrieve content filtering data
-            content_filtering = dashboard.appliance.getNetworkApplianceContentFiltering(
-                network_id
-            )
-            allowed_url_count = len(content_filtering.get("allowedUrlPatterns", []))
-            blocked_url_count = len(content_filtering.get("blockedUrlPatterns", []))
-            blocked_categories_count = len(
-                content_filtering.get("blockedUrlCategories", [])
-            )
+                    if status == "active" or status == "ready":
+                        status_with_emoji = f"\U0001F7E2 {status}"
+                    else:
+                        status_with_emoji = f"\U0001F534 {status}"
 
-            # Compile data for each network
-            row = {
-                "general": {
-                    "networkId": mx_uplinks["networkId"],
-                    "serial": mx_uplinks["serial"],
-                    "model": mx_uplinks["model"],
-                    "lastReportedAt": mx_uplinks["lastReportedAt"],
-                    "firewallRulesCount": fw_rules_count,
-                },
-                "highAvailability": mx_uplinks["highAvailability"],
-                "uplinks": {},
-                "security": {
-                    "IDS": (
-                        ids["mode"] if ids["mode"] == "disabled" else ids["idsRulesets"]
-                    ),
-                    "AMP": amp["mode"],
-                },
-                "URL Filtering": {
-                    "Allowed URLs": allowed_url_count,
-                    "Blocked URLs": blocked_url_count,
-                    "Blocked Categories": blocked_categories_count,
-                },
-            }
+                    row["uplinks"][interface] = status_with_emoji
 
-            # Add uplinks information
-            for uplink in mx_uplinks.get("uplinks", []):
-                interface = uplink["interface"]
-                status = uplink["status"]
-                status_with_emoji = (
-                    f"\U0001F7E2 {status}"
-                    if status == "active"
-                    else f"\U0001F534 {status}"
+                # Check if highAvailability role is "spare"
+                if mx_uplinks["highAvailability"]["role"] == "spare":
+                    row["security"] = {
+                        "IDS": "spare",
+                        "AMP": "spare",
+                    }
+                    row["URL Filtering"] = {
+                        "Allowed URLs": "spare",
+                        "Blocked URLs": "spare",
+                        "Blocked Categories": "spare",
+                    }
+                    data.append(row)
+                    continue
+
+                # Retrieve firewall rules count
+                fw_rules = (
+                    dashboard.appliance.getNetworkApplianceFirewallL3FirewallRules(
+                        network_id
+                    )
                 )
-                row["uplinks"][interface] = status_with_emoji
+                fw_rules_count = len(fw_rules["rules"])
+                row["general"]["firewallRulesCount"] = fw_rules_count
 
-            data.append(row)
+                security_fetch_error = False
+                try:
+                    # Retrieve IDS and AMP data
+                    ids = dashboard.appliance.getNetworkApplianceSecurityIntrusion(
+                        network_id
+                    )
+                    amp = dashboard.appliance.getNetworkApplianceSecurityMalware(
+                        network_id
+                    )
+                    # Retrieve content filtering data
+                    content_filtering = (
+                        dashboard.appliance.getNetworkApplianceContentFiltering(
+                            network_id
+                        )
+                    )
+                    allowed_url_count = len(
+                        content_filtering.get("allowedUrlPatterns", [])
+                    )
+                    blocked_url_count = len(
+                        content_filtering.get("blockedUrlPatterns", [])
+                    )
+                    blocked_categories_count = len(
+                        content_filtering.get("blockedUrlCategories", [])
+                    )
+
+                except:
+                    security_fetch_error = True
+
+                # Modify based on security_fetch_error being False
+                if not security_fetch_error:
+                    # Update "security" section
+                    row["security"] = {
+                        "IDS": (
+                            (
+                                ids["mode"]
+                                if ids["mode"] == "disabled"
+                                else f"{ids['mode']} - {ids['idsRulesets']}"
+                            ),
+                        ),
+                        "AMP": amp["mode"],
+                    }
+                    # Update "URL Filtering" section
+                    row["URL Filtering"] = {
+                        "Allowed URLs": allowed_url_count,
+                        "Blocked URLs": blocked_url_count,
+                        "Blocked Categories": blocked_categories_count,
+                    }
+
+                data.append(row)
     return data
 
 
