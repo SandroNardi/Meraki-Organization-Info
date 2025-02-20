@@ -39,13 +39,13 @@ pip install pywebio pyecharts meraki
 
 4. Set up your environment variables:
 
-- MK_TEST_API: Your Meraki Dashboard API key
-- MK_ORG_ID: Your organization ID
+- MK_CSM_KEY: Your Meraki Dashboard API key
+- MK_CSM_ORG: Your organization ID
 
 You can set these in your terminal session:
 
 ```bash
-export MK_TEST_API='your_api_key' export MK_ORG_ID='your_org_id'
+export MK_CSM_KEY='your_api_key' export MK_CSM_ORG='your_org_id'
 ```
 
 ## Usage
