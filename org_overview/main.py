@@ -21,7 +21,7 @@ def main():
     # Define menu buttons
     put_buttons(["Admins Overview"], onclick=[lambda: admin_overview(main)])
     put_buttons(["Networks Overview"], onclick=[lambda: net_overview(main)])
-    put_buttons(["Logs Overview"], onclick=[lambda: mx_logs_overview(main)])
+    put_buttons(["Logs Overview"], onclick=[lambda: logs_overview(main)])
     put_buttons(["MX Sec Overview"], onclick=[lambda: mx_sec_status(main)])
     put_buttons(["API Usage"], onclick=[lambda: api_usage(main)])
     put_buttons(["Firmware status"], onclick=[lambda: firmware_status(main)])

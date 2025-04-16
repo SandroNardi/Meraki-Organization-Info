@@ -15,22 +15,35 @@ dashboard = meraki.DashboardAPI(API_KEY, suppress_logging=True)
 
 back_to_main_text = "Back to Menu"
 
-# Event types selected for logging
-mx_events_selected = [
-    "vpn_connectivity_change",
-    "failover_event",
-    "vrrp_state_change",
-    "vrrp_vrid_collision",
-    "dhcp_problem",
-    "nbar_block",
-    "cf_block",
-    "sf_url_block",
-    "8021x_eap_failure",
-    "8021x_radius_timeout",
-    "8021x_client_timeout",
-    "radius_server_attribute_mismatch",
-    "radius_mab_timeout",
-    "radius_invalid_vlan_name",
+
+product_types_logs = [
+    "appliance",
+    "camera",
+    "cellularGateway",
+    "wirelessController",
+    "switch",
+    "wireless",
 ]
+
+# Event types selected for logging
+logs_events_selected = {
+    "appliance": [
+        "vpn_connectivity_change",
+        "failover_event",
+        "vrrp_state_change",
+        "vrrp_vrid_collision",
+        "dhcp_problem",
+        "nbar_block",
+        "cf_block",
+        "sf_url_block",
+        "8021x_eap_failure",
+        "8021x_radius_timeout",
+        "8021x_client_timeout",
+        "radius_server_attribute_mismatch",
+        "radius_mab_timeout",
+        "radius_invalid_vlan_name",
+    ],
+    "wireless": [],
+}
 
 css_style = "#output-container{max-width: none;}"

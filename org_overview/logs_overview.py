@@ -1,6 +1,6 @@
 from pywebio.input import *  # For input elements like DATE
 from pywebio.output import *  # For output elements like put_text, put_buttons
-from pywebio import start_server
+from pywebio import start_server, config
 from utils import page_init
 from navigation import navigate_to_main
 from collections import Counter, defaultdict
@@ -9,32 +9,58 @@ from config import *
 page_title = "Logs Overview"
 
 
-def mx_logs_overview(main_func=None):
+def logs_overview(main_func=None):
     """Render header"""
     if main_func:
         page_init(back_to_main_text, page_title, lambda: navigate_to_main(main_func))
     else:
         page_init(back_to_main_text, page_title)
 
-    mx_events = fetch_log_type(
-        dashboard,
-        ORGANIZATION_ID,
-        "appliance",
+    productType = select_product_type(dashboard, ORGANIZATION_ID, product_types_logs)
+
+    selected_events = fetch_log_type(
+        dashboard, ORGANIZATION_ID, productType, logs_events_selected[productType]
     )
 
     # Fetch data
-    data = fetch_log_overview(dashboard, ORGANIZATION_ID, "appliance", mx_events)
+    data = fetch_log_overview(dashboard, ORGANIZATION_ID, productType, selected_events)
 
     # Display data
     put_datatable(data["org_data"])
     put_datatable(data["net_data"])
 
 
-def fetch_log_type(
-    dashboard,
-    organization_id,
-    productType,
-):
+def select_product_type(dashboard, organization_id, product_types_logs):
+    with put_loading():
+        put_text("Fetching data, please wait...")
+        # Fetch networks and their event types
+        networks = dashboard.organizations.getOrganizationNetworks(
+            organization_id, total_pages="all"
+        )
+
+        # Initialize a set to store unique product types
+        unique_product_types = set()
+
+        for network in networks:
+            # Iterate over each product type in the network
+            for productType in network["productTypes"]:
+                # Check if the product type is in the product_types_logs
+                if productType in product_types_logs:
+                    # Add to the set to ensure uniqueness
+                    unique_product_types.add(productType)
+
+    # Convert set to list for radio options
+    options = list(unique_product_types)
+
+    # Display radio button selection
+    selected_product_type = radio(
+        label="Select a product type:", options=options, required=True
+    )
+
+    return selected_product_type
+
+
+def fetch_log_type(dashboard, organization_id, productType, logs_events_selected):
     with put_loading():
         put_text("Fetching data, please wait...")
         # Fetch networks and their event types
@@ -43,7 +69,7 @@ def fetch_log_type(
         )
         all_event_types = set()
         for network in networks:
-            productType = "appliance"
+            productType = productType
             event_types = dashboard.networks.getNetworkEventsEventTypes(network["id"])
             all_event_types.update(
                 (e["category"], e["type"], e["description"])
@@ -62,14 +88,20 @@ def fetch_log_type(
             for cat, typ, desc in sorted_event_types
         ]
         checked_values = [
-            typ for _, typ, _ in sorted_event_types if typ in mx_events_selected
+            typ for _, typ, _ in sorted_event_types if typ in logs_events_selected
         ]
 
         # Display the checkboxes for event selection
     selected_values = input_group(
         "Select Events",
         [
-            actions(name="submit", buttons=["Submit"]),
+            actions(
+                name="top_buttons",
+                buttons=[
+                    {"label": "Submit", "value": "submit", "color": "primary"},
+                    {"label": "Reset", "type": "reset", "color": "warning"},
+                ],
+            ),
             checkbox(options=options, value=checked_values, name="events"),
         ],
     )
@@ -138,8 +170,10 @@ def fetch_log_overview(dashboard, organization_id, productType, includedEventTyp
 
 def main():
     """Main function for standalone execution"""
+    # Set configuration for PyWebIO
+    config(css_style=css_style)
     # Start the server with the mx_logs_overview function
-    start_server(lambda: mx_logs_overview(), port=8999, debug=True)
+    start_server(lambda: logs_overview(), port=8999, debug=True)
 
 
 if __name__ == "__main__":
