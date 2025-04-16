@@ -3,7 +3,7 @@ import os
 import meraki
 
 # Retrieve API key and organization ID from environment variables
-if True:  # Modify this condition based on your configuration needs
+if False:  # Modify this condition based on your configuration needs
     API_KEY = os.getenv("MK_CSM_KEY")
     ORGANIZATION_ID = os.getenv("MK_CSM_ORG")
 else:
@@ -32,3 +32,5 @@ mx_events_selected = [
     "radius_mab_timeout",
     "radius_invalid_vlan_name",
 ]
+
+css_style = "#output-container{max-width: none;}"

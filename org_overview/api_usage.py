@@ -6,7 +6,7 @@ from pyecharts.charts import Bar, Pie
 from pyecharts import options as opts
 from utils import page_init
 from navigation import navigate_to_main
-from collections import Counter, defaultdict
+from collections import defaultdict
 from config import *
 
 page_title = "API Usage Overview"

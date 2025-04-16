@@ -1,6 +1,6 @@
 from pywebio.output import *
-from pywebio import start_server
-from utils import page_init
+from pywebio import start_server, config
+from utils import *
 from navigation import navigate_to_main
 from config import *
 
@@ -30,6 +30,8 @@ def fetch_function(dashboard, organization_id):
 
 def main():
     """Main function for standalone execution"""
+    # Set configuration for PyWebIO
+    config(css_style=css_style)
     # Start the server with the mx_sec_status function
     start_server(lambda: display_function(), port=8999, debug=True)
 

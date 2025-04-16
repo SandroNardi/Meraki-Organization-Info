@@ -6,10 +6,11 @@ from logs_overview import mx_logs_overview
 from mx_sec_status import mx_sec_status
 from api_usage import api_usage
 from firmware_status import firmware_status
-
+from ms_reboot_reason import ms_reboot_reason
+from config import *
 
 # Set configuration for PyWebIO
-config(css_style="#output-container{max-width: none;}")
+config(css_style=css_style)
 
 
 def main():
@@ -24,6 +25,7 @@ def main():
     put_buttons(["MX Sec Overview"], onclick=[lambda: mx_sec_status(main)])
     put_buttons(["API Usage"], onclick=[lambda: api_usage(main)])
     put_buttons(["Firmware status"], onclick=[lambda: firmware_status(main)])
+    put_buttons(["MS Reboot Reason"], onclick=[lambda: ms_reboot_reason(main)])
 
 
 if __name__ == "__main__":
