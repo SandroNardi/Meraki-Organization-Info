@@ -3,7 +3,7 @@ import os
 import meraki
 
 # Retrieve API key and organization ID from environment variables
-if False:  # Modify this condition based on your configuration needs
+if True:  # Modify this condition based on your configuration needs
     API_KEY = os.getenv("MK_CSM_KEY")
     ORGANIZATION_ID = os.getenv("MK_CSM_ORG")
 else:
@@ -44,6 +44,7 @@ logs_events_selected = {
         "radius_invalid_vlan_name",
     ],
     "wireless": [],
+    "switch": [],
 }
 
 css_style = "#output-container{max-width: none;}"

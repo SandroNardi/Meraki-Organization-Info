@@ -50,7 +50,7 @@ def select_product_type(dashboard, organization_id, product_types_logs):
                     unique_product_types.add(productType)
 
     # Convert set to list for radio options
-    options = list(unique_product_types)
+    options = sorted(list(unique_product_types))
 
     # Display radio button selection
     selected_product_type = radio(
@@ -63,38 +63,72 @@ def select_product_type(dashboard, organization_id, product_types_logs):
 def fetch_log_type(dashboard, organization_id, productType, logs_events_selected):
     with put_loading():
         put_text("Fetching data, please wait...")
-        # Fetch networks and their event types
+
+        # Fetch all networks within the specified organization
         networks = dashboard.organizations.getOrganizationNetworks(
             organization_id, total_pages="all"
         )
+
+        # Initialize a set to store unique event types
         all_event_types = set()
+
+        # Iterate through each network to gather event types
         for network in networks:
-            productType = productType
-            event_types = dashboard.networks.getNetworkEventsEventTypes(network["id"])
-            all_event_types.update(
-                (e["category"], e["type"], e["description"])
-                for e in event_types
-                if productType in network["productTypes"]
+            # Check if the specified product type exists in the network's product types
+            if productType not in network["productTypes"]:
+                continue
+
+            print(network["name"], network["productTypes"])
+            print(productType)
+
+            # Fetch event types for the current network
+            event_types = dashboard.networks.getNetworkEvents(
+                network["id"],
+                productType=productType,
+            )
+            print(event_types)
+
+            # Add each event's category, type, and description to the set
+            for event in event_types["events"]:
+                all_event_types.add(
+                    (event["category"], event["type"], event["description"])
+                )
+
+        print(all_event_types)
+
+        # Sort the event types by category and then by type
+        sorted_event_types = sorted(all_event_types, key=lambda x: (x[0], x[1]))
+
+        # Prepare grouped options for checkboxes based on event category
+        grouped_options = {}
+        for cat, typ, desc in sorted_event_types:
+            if cat not in grouped_options:
+                grouped_options[cat] = []
+            grouped_options[cat].append({"label": f"{desc}", "value": typ})
+
+        # Prepare a list for collecting all input elements
+        input_elements = []
+
+        # Append markdown and checkboxes for each category to input elements
+        for category, options in grouped_options.items():
+            input_elements.append(
+                checkbox(
+                    options=options,
+                    value=[
+                        opt["value"]
+                        for opt in options
+                        if opt["value"] in logs_events_selected
+                    ],
+                    name=category,
+                    label=f"### {category.upper()}",  # Use 'label' to include category as part of the checkbox group
+                )
             )
 
-        # Sort and organize the event types
-        sorted_event_types = sorted(
-            all_event_types, key=lambda x: (x[0], x[1])
-        )  # Sort by category, then type
-
-        # Prepare options for checkboxes
-        options = [
-            {"label": f"{cat} - {desc}", "value": typ}
-            for cat, typ, desc in sorted_event_types
-        ]
-        checked_values = [
-            typ for _, typ, _ in sorted_event_types if typ in logs_events_selected
-        ]
-
-        # Display the checkboxes for event selection
+        # Display the input group with markdown and checkboxes
     selected_values = input_group(
         "Select Events",
-        [
+        input_elements
+        + [
             actions(
                 name="top_buttons",
                 buttons=[
@@ -102,12 +136,15 @@ def fetch_log_type(dashboard, organization_id, productType, logs_events_selected
                     {"label": "Reset", "type": "reset", "color": "warning"},
                 ],
             ),
-            checkbox(options=options, value=checked_values, name="events"),
         ],
     )
 
-    # Collect selected types
-    return selected_values.get("events", [])
+    # Collect selected types from all categories
+    selected_event_types = []
+    for category in grouped_options.keys():
+        selected_event_types.extend(selected_values.get(category, []))
+
+    return selected_event_types
 
 
 def fetch_log_overview(dashboard, organization_id, productType, includedEventTypes):
